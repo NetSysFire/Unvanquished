@@ -42,6 +42,8 @@ Maryland 20850 USA.
 #include <Rocket/Core/ElementText.h>
 #include <Rocket/Core/StyleSheetKeywords.h>
 
+extern Rocket::Core::Element *activeElement;
+
 static void CG_GetRocketElementColor( Color::Color& color )
 {
 	Rocket_GetProperty( "color", &color, sizeof(Color::Color), rocketVarType_t::ROCKET_COLOR );
@@ -2462,6 +2464,30 @@ void CG_Rocket_DrawPlayerHealthCross()
 
 }
 
+static void CG_Rocket_DrawTranslation()
+{
+	if ( ! activeElement->HasAttribute( "translated" ) )
+	{
+		int flags = 0;
+
+		if ( activeElement->HasAttribute( "quake" ) )
+		{
+			flags |= RP_QUAKE;
+		}
+
+		if ( activeElement->HasAttribute( "emoticons" ) )
+		{
+			flags |= RP_EMOTICONS;
+		}
+
+		const char *translated_text = Trans_Gettext( activeElement->GetInnerRML().CString() );
+
+		Rocket_SetInnerRML( translated_text, flags );
+
+		activeElement->SetAttribute( "translated", "yes" );
+	}
+}
+
 /*
 ============
 CG_DrawStack
@@ -3619,6 +3645,7 @@ static const elementRenderCmd_t elementRenderCmdList[] =
 	{ "progress_value", &CG_Rocket_DrawProgressValue, ELEMENT_ALL },
 	{ "spawnPos", &CG_Rocket_DrawSpawnQueuePosition, ELEMENT_DEAD },
 	{ "stamina_bolt", &CG_Rocket_DrawStaminaBolt, ELEMENT_HUMANS },
+	{ "translate", &CG_Rocket_DrawTranslation, ELEMENT_ALL },
 	{ "tutorial", &CG_Rocket_DrawTutorial, ELEMENT_GAME },
 	{ "unlocked_items", &CG_Rocket_DrawPlayerUnlockedItems, ELEMENT_BOTH },
 	{ "version", &CG_Rocket_DrawVersion, ELEMENT_ALL },
