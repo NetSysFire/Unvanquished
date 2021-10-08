@@ -1,0 +1,122 @@
+#! /usr/bin/env python3
+#-*- coding: UTF-8 -*-
+
+# ===========================================================================
+#
+# Copyright (c) 2017-2020 Unvanquished Developers
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+# ===========================================================================
+
+from bs4 import BeautifulSoup
+import datetime
+import fileinput
+import sys
+
+# Either do:
+#   generate_rml_pot *.rml > file.pot
+# or
+#   find . -type f -name '*.rml' | generate_rml_pot -f - > file.pot
+#
+# You can use -s option to sort the strings in the produced .pot file.
+#
+# For now the options are ordered, you must call -s before file paths
+# or the -f options.
+#
+# You can't use -f and pass files from command line at the same time.
+
+sys.argv.pop(0)
+
+sort_translatable_strings = False
+
+if len(sys.argv) > 0 and sys.argv[0] == "-s":
+	sort_translatable_strings = True
+	sys.argv.pop(0)
+
+input_file = None
+
+if len(sys.argv) > 0 and sys.argv[0] == "-f":
+	sys.argv.pop(0)
+	input_file_path = sys.argv[0]
+	sys.argv.pop(0)
+
+	if len(sys.argv) != 0:
+		raise(BaseException)
+
+	if input_file_path == "-":
+		input_file = sys.stdin
+	else:
+		input_file = open(input_file_path, "r")
+
+elif len(sys.argv) == 0:
+	raise(BaseException)
+
+rml_file_path_list = []
+
+if input_file:
+	rml_file_path_list.extend([line.rstrip() for line in input_file.readlines()])
+else:
+	rml_file_path_list.extend(sys.argv)
+
+translation_dict = {}
+
+for rml_file_path in rml_file_path_list:
+	with open(rml_file_path) as rml_file:
+		rml_content = rml_file.read()
+		rml_soup = BeautifulSoup(rml_content, "lxml")
+
+		for element in rml_soup.find_all("translate"):
+			translatable_string = "".join([str(e) for e in element.contents])
+
+			if translatable_string not in translation_dict.keys():
+				translation_dict[translatable_string] = []
+
+			if rml_file_path not in translation_dict[translatable_string]:
+				translation_dict[translatable_string].append(rml_file_path)
+
+datetime_string = datetime.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M%z")
+
+print("""# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"POT-Creation-Date: """ + datetime_string + """\\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\\n"
+"Language: \\n"
+"MIME-Version: 1.0\\n"
+"Content-Type: text/plain; charset=UTF-8\\n"
+"Content-Transfer-Encoding: 8bit\\n"
+""")
+
+translatable_strings = []
+translatable_strings.extend(translation_dict.keys())
+
+if sort_translatable_strings:
+	translatable_strings.sort()
+
+for translatable_string in translatable_strings:
+	print("#: " + " ".join(translation_dict[translatable_string]))
+	print("msgid \"" + "\\n\"\n\"".join(translatable_string.split("\n")) + "\"")
+	print("msgstr \"\"")
+	print("")
